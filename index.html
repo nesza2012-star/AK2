@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>หัวใจสีชมพู AR</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;color:#fff}header,.panel{position:fixed;z-index:10;left:12px;right:12px;background:rgba(54,17,45,.9);border:1px solid #ffacd3;border-radius:20px;padding:16px;text-align:center}header{top:12px;pointer-events:none}h1{font-size:21px;margin:0 0 7px}p{font-size:14px;margin:7px 0}.panel{bottom:max(12px,env(safe-area-inset-bottom));max-width:480px;margin:auto}button{font:inherit;font-weight:700;border:0;border-radius:14px;background:#ff62a9;color:#321027;padding:14px 22px;width:100%;cursor:pointer}button:disabled{opacity:.5;cursor:default}a{color:#ffc2df}details{margin-top:12px;font-size:13px}summary{cursor:pointer}a-scene{position:fixed;inset:0}
+</style>
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
+<script>
+window.heartState={found:false,spinning:false};
+if(window.AFRAME){
+// Make an extruded heart directly, without an external model file.
+AFRAME.registerComponent('pink-heart',{
+ schema:{color:{default:'#ff68ac'}},
+ init:function(){
+ const T=AFRAME.THREE;
+ const shape=new T.Shape();
+ shape.moveTo(0,.25);
+ shape.bezierCurveTo(.1,.45,.5,.45,.5,.12);
+ shape.bezierCurveTo(.5,-.1,.2,-.32,0,-.5);
+ shape.bezierCurveTo(-.2,-.32,-.5,-.1,-.5,.12);
+ shape.bezierCurveTo(-.5,.45,-.1,.45,0,.25);
+ const geometry=new T.ExtrudeGeometry(shape,{depth:.14,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.045,bevelThickness:.04,curveSegments:32});
+ geometry.center();
+ const material=new T.MeshStandardMaterial({color:this.data.color,metalness:.12,roughness:.3});
+ this.mesh=new T.Mesh(geometry,material);
+ this.el.setObject3D('mesh',this.mesh);
+ },
+ remove:function(){if(this.mesh){this.el.removeObject3D('mesh');this.mesh.geometry.dispose();this.mesh.material.dispose();}}
+});
+AFRAME.registerComponent('heart-orbit',{
+ tick:function(time,delta){
+ const s=window.heartState;
+ if(!s.found||!s.spinning)return;
+ const step=Math.min(delta||0,100)/1000;
+ // Rotate the whole ring around the vertical axis above Hiro.
+ this.el.object3D.rotation.y=(this.el.object3D.rotation.y+step*.65)%(Math.PI*2);
+ this.el.querySelectorAll('[pink-heart]').forEach(heart=>{
+ heart.object3D.rotation.y=(heart.object3D.rotation.y+step*.9)%(Math.PI*2);
+ });
+ }
+});
+}
+</script>
+</head>
+<body>
+<header><h1>♥ หัวใจสีชมพู AR ♥</h1><p id="status" role="status" aria-live="polite">กำลังเริ่มกล้อง…</p></header>
+<section class="panel" aria-label="ควบคุมหัวใจ">
+<button id="rotateButton" disabled aria-pressed="false">เริ่มหมุนหัวใจ</button>
+<p id="motionStatus" aria-live="polite">หัวใจ 4 ดวง • รอ Hiro marker</p>
+<details><summary>วิธีใช้งาน</summary><p>อนุญาตกล้อง แล้วส่อง Hiro marker ให้เห็นกรอบดำครบทั้งสี่ด้าน กดปุ่มเพื่อให้หัวใจหมุนรอบจุดศูนย์กลาง และกดอีกครั้งเพื่อหยุด</p><p><a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" target="_blank" rel="noopener">เปิดรูป Hiro marker</a> บนอีกหน้าจอหรือพิมพ์ลงกระดาษ</p><p>เปิดผ่าน HTTPS หรือ localhost และเชื่อมต่ออินเทอร์เน็ตเพื่อโหลดไลบรารี</p></details>
+</section>
+<a-scene embedded vr-mode-ui="enabled:false" renderer="antialias:true;alpha:true" arjs="sourceType:webcam;debugUIEnabled:false;trackingMethod:best;">
+<a-entity light="type:ambient;intensity:1.3"></a-entity>
+<a-entity light="type:directional;intensity:1.2" position="-2 4 3"></a-entity>
+<a-marker id="hiro" preset="hiro" emitevents="true">
+<a-entity position="0 .85 0" scale=".65 .65 .65">
+<a-entity heart-orbit>
+<a-entity pink-heart="color:#ff74b6" position="1.15 0 0"></a-entity>
+<a-entity pink-heart="color:#ff519d" position="0 0 1.15"></a-entity>
+<a-entity pink-heart="color:#ffa3cf" position="-1.15 0 0"></a-entity>
+<a-entity pink-heart="color:#f967b3" position="0 0 -1.15"></a-entity>
+</a-entity>
+</a-entity>
+</a-marker>
+<a-entity camera></a-entity>
+</a-scene>
+<script>
+const state=window.heartState;
+const button=document.getElementById('rotateButton');
+const statusEl=document.getElementById('status');
+const motionStatus=document.getElementById('motionStatus');
+function render(){
+ button.disabled=!state.found;
+ button.textContent=state.spinning?'หยุดหมุนหัวใจ':'เริ่มหมุนหัวใจ';
+ button.setAttribute('aria-pressed',String(state.spinning));
+ motionStatus.textContent='หัวใจ 4 ดวง • '+(!state.found?'รอ Hiro marker':state.spinning?'กำลังหมุนรอบๆ':'หยุดหมุน');
+}
+button.addEventListener('click',()=>{if(!state.found)return;state.spinning=!state.spinning;render();});
+const marker=document.getElementById('hiro');
+marker.addEventListener('markerFound',()=>{state.found=true;statusEl.textContent='พบ Hiro marker แล้ว • กดปุ่มเพื่อหมุนหัวใจ';render();});
+marker.addEventListener('markerLost',()=>{state.found=false;state.spinning=false;statusEl.textContent='ไม่พบ marker • ส่องให้เห็นกรอบดำครบทั้งสี่ด้าน';render();});
+window.addEventListener('camera-init',()=>{statusEl.textContent='กล้องพร้อมแล้ว • ส่อง Hiro marker';});
+window.addEventListener('camera-error',()=>{statusEl.textContent='เปิดกล้องไม่ได้ • ตรวจสอบสิทธิ์กล้อง และใช้ HTTPS หรือ localhost';});
+if(!window.AFRAME||!AFRAME.systems.arjs){statusEl.textContent='โหลดไลบรารีไม่สำเร็จ • ตรวจสอบอินเทอร์เน็ตแล้วโหลดหน้าใหม่';}
+else if(!window.isSecureContext){statusEl.textContent='ต้องเปิดผ่าน HTTPS หรือ localhost เพื่อใช้กล้อง';}
+render();
+</script>
+</body>
+</html>
